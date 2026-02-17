@@ -1,0 +1,19 @@
+{
+  "name": "broadband-view",
+  "private": true,
+  "scripts": {
+    "api:dev": "pnpm --filter @broadband-view/api dev",
+    "api:build": "pnpm --filter @broadband-view/api build",
+    "pipeline:run": "pnpm --filter @broadband-view/pipeline pipeline",
+    "db:generate": "pnpm --filter @broadband-view/api db:generate",
+    "db:migrate": "pnpm --filter @broadband-view/api db:migrate",
+    "db:push": "pnpm --filter @broadband-view/api db:push",
+    "test": "pnpm -r run test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
