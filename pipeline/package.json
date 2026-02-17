@@ -1,0 +1,27 @@
+{
+  "name": "@broadband-view/pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pipeline": "tsx src/run-pipeline.ts",
+    "check-vintage": "tsx src/check-vintage.ts",
+    "download": "tsx src/download.ts",
+    "import": "tsx src/import.ts"
+  },
+  "dependencies": {
+    "@broadband-view/shared": "workspace:*",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.0",
+    "pg": "^8.13.0",
+    "pg-copy-streams": "^6.0.0",
+    "unzipper": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0",
+    "@types/pg-copy-streams": "^1.2.5",
+    "@types/unzipper": "^0.10.11",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
