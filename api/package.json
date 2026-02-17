@@ -1,0 +1,35 @@
+{
+  "name": "@broadband-view/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:reset": "drizzle-kit reset",
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@broadband-view/shared": "workspace:*",
+    "hono": "^4.7.0",
+    "@hono/node-server": "^1.13.0",
+    "drizzle-orm": "^0.38.0",
+    "pg": "^8.13.0",
+    "h3-js": "^4.2.0",
+    "lru-cache": "^11.0.0",
+    "zod": "^3.24.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "vitest": "^3.0.0"
+  }
+}
