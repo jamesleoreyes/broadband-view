@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        width: 280px;
+        padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        color: #334155;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .header svg {
+        color: #3b82f6;
+      }
+      h1 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      p {
+        font-size: 13px;
+        color: #64748b;
+        line-height: 1.4;
+        margin-bottom: 12px;
+      }
+      .status {
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .status-loading {
+        background: #f1f5f9;
+        color: #64748b;
+      }
+      .status-ok {
+        background: #f0fdf4;
+        color: #16a34a;
+      }
+      .status-err {
+        background: #fef2f2;
+        color: #dc2626;
+      }
+      .attribution {
+        margin-top: 12px;
+        font-size: 11px;
+        color: #94a3b8;
+      }
+      .attribution a {
+        color: #94a3b8;
+        text-decoration: none;
+      }
+      .attribution a:hover {
+        color: #3b82f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+      </svg>
+      <h1>BroadbandView</h1>
+    </div>
+    <p>
+      See available internet providers and speeds on Zillow real estate
+      listings.
+    </p>
+    <div id="status" class="status status-loading">Checking API...</div>
+    <div class="attribution">
+      Data from
+      <a href="https://broadbandmap.fcc.gov" target="_blank" rel="noopener"
+        >FCC Broadband Data Collection</a
+      >
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
