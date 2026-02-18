@@ -44,5 +44,5 @@ CREATE TABLE "geocode_cache" (
 CREATE INDEX "idx_broadband_h3" ON "broadband_availability" USING btree ("h3_res8_id");--> statement-breakpoint
 CREATE INDEX "idx_broadband_geoid" ON "broadband_availability" USING btree ("block_geoid");--> statement-breakpoint
 CREATE INDEX "idx_broadband_vintage" ON "broadband_availability" USING btree ("data_vintage");--> statement-breakpoint
-CREATE UNIQUE INDEX "idx_broadband_unique" ON "broadband_availability" USING btree ("block_geoid","provider_id","technology_code","data_vintage");--> statement-breakpoint
+--> statement-breakpoint
 CREATE INDEX "idx_geocode_address" ON "geocode_cache" USING btree ("address_hash");
