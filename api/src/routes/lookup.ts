@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { getH3Index, getCensusBlockGeoid } from "../services/geolocation.js";
+import {
+  getH3Index,
+  getCensusBlockGeoid,
+  geocodeAddress,
+} from "../services/geolocation.js";
 import { lookupProviders } from "../services/availability.js";
 import { db } from "../db/connection.js";
 import { dataVintages } from "../db/schema.js";
@@ -9,9 +13,10 @@ import type { LookupResponse, HealthResponse } from "@broadband-view/shared";
 
 const app = new Hono();
 
+// lat/lng are optional — if omitted, the address will be geocoded server-side
 const lookupSchema = z.object({
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
   address: z.string().optional(),
 });
 
@@ -24,13 +29,69 @@ app.post("/api/lookup", async (c) => {
       {
         success: false,
         data: { providers: [], h3_index: "", lookup_method: "h3" },
-        error: "Invalid request: lat and lng are required numbers",
+        error: "Invalid request body",
       },
       400,
     );
   }
 
-  const { lat, lng, address } = parsed.data;
+  let { lat, lng, address } = parsed.data;
+
+  // If no coordinates provided, geocode the address
+  if ((lat == null || lng == null) && address) {
+    const geo = await geocodeAddress(address);
+    if (!geo) {
+      return c.json<LookupResponse>({
+        success: true,
+        data: {
+          providers: [],
+          h3_index: "",
+          lookup_method: "h3",
+        },
+        error: "Could not geocode address",
+      });
+    }
+    lat = geo.lat;
+    lng = geo.lng;
+
+    // If the geocoder also returned a block GEOID, use it directly
+    if (geo.blockGeoid) {
+      const h3Index = getH3Index(lat, lng);
+      let { providers, method } = await lookupProviders(
+        h3Index,
+        geo.blockGeoid,
+      );
+
+      const vintage = await db
+        .select()
+        .from(dataVintages)
+        .where(eq(dataVintages.is_active, true))
+        .orderBy(desc(dataVintages.created_at))
+        .limit(1);
+
+      return c.json<LookupResponse>({
+        success: true,
+        data: {
+          providers,
+          h3_index: h3Index,
+          data_vintage: vintage[0]?.vintage_id,
+          lookup_method: method,
+        },
+      });
+    }
+  }
+
+  if (lat == null || lng == null) {
+    return c.json<LookupResponse>(
+      {
+        success: false,
+        data: { providers: [], h3_index: "", lookup_method: "h3" },
+        error: "Either lat/lng or address is required",
+      },
+      400,
+    );
+  }
+
   const h3Index = getH3Index(lat, lng);
 
   // Try H3 first
