@@ -1,8 +1,9 @@
 /**
  * BroadbandView — Panel Rendering
  *
- * Creates and manages the broadband availability panel
- * injected into Zillow listing pages.
+ * Injects an "Internet Providers" section into Zillow listing pages,
+ * matching Zillow's native section styling (divider → h2 → content).
+ * Falls back to a floating overlay if the inline target isn't found.
  */
 
 // Technology badge styles (mirrors shared/types.ts TECH_META)
@@ -39,34 +40,51 @@ function formatSpeed(mbps) {
 }
 
 /**
- * Find the best injection point in the Zillow page for the panel.
+ * Find the "Facts & features" section container by searching for its h2.
+ * Returns the container div (h2's parent) so we can insert after it.
  */
-function findInsertionTarget() {
-  const selectors = [
-    // After the home facts section
-    '[data-testid="facts-table"]',
-    // After the price/summary area
-    '[class*="summary-container"]',
-    // After the home details container
-    "#home-details-content",
-    // Near the description
-    '[data-testid="description"]',
-    // Generic: any section in main content
-    "main section",
-  ];
-
-  for (const selector of selectors) {
-    const el = document.querySelector(selector);
-    if (el) return el;
+function findSectionTarget() {
+  const h2s = document.querySelectorAll("h2");
+  for (const h2 of h2s) {
+    const text = h2.textContent.trim();
+    if (text === "Facts & features") {
+      return h2.parentElement;
+    }
   }
-
-  // Ultimate fallback
-  return document.querySelector("main") || document.body;
+  // Fallback: try "What's special" if "Facts & features" isn't present
+  for (const h2 of h2s) {
+    if (h2.textContent.trim() === "What's special") {
+      return h2.parentElement;
+    }
+  }
+  return null;
 }
 
-function createSkeletonHtml() {
+/**
+ * Create the inline section HTML matching Zillow's native section structure.
+ */
+function createSectionHtml() {
   return `
-    <div class="bbv-panel" id="broadband-view-panel">
+    <div id="broadband-view-panel" class="bbv-section">
+      <div class="bbv-section-divider" role="separator"></div>
+      <h2 class="bbv-section-heading">Internet Providers</h2>
+      <div class="bbv-section-body">
+        <div class="bbv-skeleton">
+          <div class="bbv-skeleton-line" style="width: 85%"></div>
+          <div class="bbv-skeleton-line" style="width: 65%"></div>
+          <div class="bbv-skeleton-line" style="width: 75%"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Create the floating panel HTML (fallback when inline target isn't found).
+ */
+function createFloatingHtml() {
+  return `
+    <div id="broadband-view-panel" class="bbv-panel bbv-panel-floating">
       <div class="bbv-header">
         <div class="bbv-header-left">
           <svg class="bbv-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -92,7 +110,8 @@ function createSkeletonHtml() {
 
 function createProviderCard(provider) {
   const badge = TECH_BADGES[provider.technology_code] || TECH_BADGES[0];
-  const tier = provider.speed_tier || getSpeedTier(provider.max_download_speed);
+  const tier =
+    provider.speed_tier || getSpeedTier(provider.max_download_speed);
   const dlFormatted =
     provider.download_formatted || formatSpeed(provider.max_download_speed);
   const ulFormatted =
@@ -143,42 +162,69 @@ function escapeHtml(str) {
 }
 
 /**
- * Main render function — injects the panel and populates it with ISP data.
+ * Main render function.
+ *
+ * Tries to inject as a native Zillow section after "Facts & features".
+ * Retries finding the target for up to 5 seconds (modal may still be rendering).
+ * Falls back to a floating overlay if the target is never found.
  */
 async function renderPanel(lat, lng, address) {
-  // Don't inject if already present
   if (document.getElementById("broadband-view-panel")) return;
 
-  const target = findInsertionTarget();
-
-  // Inject skeleton loading state
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = createSkeletonHtml();
-  const panel = wrapper.firstElementChild;
-
-  if (target.nextSibling) {
-    target.parentNode.insertBefore(panel, target.nextSibling);
-  } else {
-    target.parentNode.appendChild(panel);
+  // Try to find inline target, retrying for up to 5s (10 × 500ms)
+  let target = null;
+  for (let i = 0; i < 10; i++) {
+    target = findSectionTarget();
+    if (target) break;
+    await new Promise((r) => setTimeout(r, 500));
+    // Another call may have rendered in the meantime
+    if (document.getElementById("broadband-view-panel")) return;
   }
 
-  const body = panel.querySelector(".bbv-body");
+  // Build the panel
+  const wrapper = document.createElement("div");
+  const isInline = !!target;
+
+  if (isInline) {
+    wrapper.innerHTML = createSectionHtml();
+  } else {
+    wrapper.innerHTML = createFloatingHtml();
+  }
+  const panel = wrapper.firstElementChild;
+
+  // Inject
+  if (isInline) {
+    target.insertAdjacentElement("afterend", panel);
+  } else {
+    document.body.appendChild(panel);
+  }
+
+  // Content container differs between inline and floating
+  const body =
+    panel.querySelector(".bbv-section-body") ||
+    panel.querySelector(".bbv-body");
+
+  // Set up toggle for floating mode
   const toggleBtn = panel.querySelector(".bbv-toggle");
+  if (toggleBtn) {
+    let collapsed = false;
+    const floatingBody = panel.querySelector(".bbv-body");
+    toggleBtn.addEventListener("click", () => {
+      collapsed = !collapsed;
+      floatingBody.style.display = collapsed ? "none" : "block";
+      toggleBtn.innerHTML = collapsed ? "&#9660;" : "&#9650;";
+      toggleBtn.setAttribute(
+        "aria-label",
+        collapsed ? "Expand" : "Collapse",
+      );
+      toggleBtn.setAttribute("title", collapsed ? "Expand" : "Collapse");
+    });
+  }
 
-  // Toggle collapse/expand
-  let collapsed = false;
-  toggleBtn.addEventListener("click", () => {
-    collapsed = !collapsed;
-    body.style.display = collapsed ? "none" : "block";
-    toggleBtn.innerHTML = collapsed ? "&#9660;" : "&#9650;";
-    toggleBtn.setAttribute("aria-label", collapsed ? "Expand" : "Collapse");
-    toggleBtn.setAttribute("title", collapsed ? "Expand" : "Collapse");
-  });
-
-  // If we don't have lat/lng, we can't call the API
-  if (lat == null || lng == null) {
+  // Bail if we have nothing to look up
+  if (lat == null && lng == null && !address) {
     body.innerHTML = createErrorHtml(
-      "Could not determine coordinates for this listing.",
+      "Could not determine location for this listing.",
     );
     return;
   }

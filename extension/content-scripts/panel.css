@@ -1,18 +1,68 @@
-/* BroadbandView Panel Styles */
+/* ==========================================================
+   BroadbandView Panel Styles
+   ==========================================================
+   Two rendering modes:
+   1. Inline section (.bbv-section) — matches Zillow's native sections
+   2. Floating overlay (.bbv-panel-floating) — fallback when inline target not found
+   ========================================================== */
+
+/* ----------------------------------------------------------
+   Inline Section (native Zillow look)
+   ---------------------------------------------------------- */
+
+.bbv-section {
+  /* No extra styling needed — inherits Zillow's column width */
+}
+
+.bbv-section-divider {
+  height: 1px;
+  background: #cdcdd3;
+  margin: 32px 0 26px;
+}
+
+.bbv-section-heading {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  color: #111116 !important;
+  line-height: 32px !important;
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+}
+
+.bbv-section-body {
+  /* Content flows naturally inside Zillow's column */
+}
+
+/* ----------------------------------------------------------
+   Floating Panel (fallback)
+   ---------------------------------------------------------- */
 
 .bbv-panel {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  margin: 16px 0;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   max-width: 100%;
 }
 
-/* Header */
+.bbv-panel-floating {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 360px;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: 2147483647;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+}
+
+/* Header (floating mode only) */
 .bbv-header {
   display: flex;
   justify-content: space-between;
@@ -57,12 +107,15 @@
   color: #475569;
 }
 
-/* Body */
+/* Body (floating mode) */
 .bbv-body {
   padding: 4px 16px 12px;
 }
 
-/* Provider card */
+/* ----------------------------------------------------------
+   Provider Cards (shared by both modes)
+   ---------------------------------------------------------- */
+
 .bbv-provider {
   padding: 12px 0;
   border-bottom: 1px solid #f1f5f9;
@@ -158,7 +211,10 @@
   color: #166534;
 }
 
-/* Loading skeleton */
+/* ----------------------------------------------------------
+   Loading Skeleton
+   ---------------------------------------------------------- */
+
 .bbv-skeleton {
   padding: 12px 0;
 }
@@ -186,7 +242,10 @@
   }
 }
 
-/* State messages */
+/* ----------------------------------------------------------
+   State Messages
+   ---------------------------------------------------------- */
+
 .bbv-state {
   text-align: center;
   padding: 16px 0;
@@ -207,11 +266,13 @@
   color: #dc2626;
 }
 
-/* Footer */
+/* ----------------------------------------------------------
+   Footer
+   ---------------------------------------------------------- */
+
 .bbv-footer {
   padding: 10px 0 0;
   margin-top: 4px;
-  border-top: 1px solid #f1f5f9;
   font-size: 11px;
   color: #94a3b8;
   display: flex;

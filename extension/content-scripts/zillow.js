@@ -230,35 +230,80 @@
     renderPanel(propertyData.lat, propertyData.lng, propertyData.address);
   }
 
-  // --- SPA Navigation Detection ---
+  // --- Retry Init (wait for Zillow's React hydration) ---
 
-  let lastUrl = window.location.href;
+  /**
+   * Poll for property data until it's available or we give up.
+   * Zillow's SPA may not have rendered JSON-LD / __NEXT_DATA__ yet
+   * when our content script first runs at document_idle.
+   */
+  function initWithRetry(maxAttempts = 15, intervalMs = 500) {
+    let attempts = 0;
 
-  const observer = new MutationObserver(() => {
-    const currentUrl = window.location.href;
-    if (currentUrl !== lastUrl) {
-      lastUrl = currentUrl;
-      console.log("[BroadbandView] SPA navigation detected:", currentUrl);
+    function tryInit() {
+      attempts++;
 
-      removeExistingPanel();
+      // Already rendered by a previous attempt or SPA nav
+      if (document.getElementById("broadband-view-panel")) return;
 
-      // Wait for Next.js to hydrate the new page content
-      if (currentUrl.includes("/homedetails/")) {
-        setTimeout(initBroadbandView, 1500);
+      const propertyData = extractPropertyData();
+
+      if (propertyData) {
+        const { renderPanel } = window.__broadbandView || {};
+        if (renderPanel) {
+          renderPanel(propertyData.lat, propertyData.lng, propertyData.address);
+          return;
+        }
+      }
+
+      if (attempts < maxAttempts) {
+        setTimeout(tryInit, intervalMs);
       }
     }
-  });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+    tryInit();
+  }
 
-  // --- Initial Run ---
+  // --- Helpers ---
 
-  // Small delay to let Zillow's SPA fully render
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      setTimeout(initBroadbandView, 1000);
-    });
-  } else {
-    setTimeout(initBroadbandView, 1000);
+  function isListingPage(url) {
+    return url.includes("/homedetails/");
+  }
+
+  // --- SPA Navigation Detection ---
+  // Zillow uses history.pushState to open listing modals over the search
+  // page — no real page load occurs. Content scripts can't intercept
+  // pushState directly (isolated world), so we poll the URL to detect
+  // changes. The interval is lightweight (~0 cost when URL hasn't changed).
+
+  let lastUrl = window.location.href;
+  let lastWasListing = isListingPage(lastUrl);
+
+  setInterval(() => {
+    const currentUrl = window.location.href;
+    if (currentUrl === lastUrl) return;
+
+    const previousUrl = lastUrl;
+    lastUrl = currentUrl;
+    const nowIsListing = isListingPage(currentUrl);
+
+    // Navigated away from a listing (closed modal / went back to search)
+    if (!nowIsListing && lastWasListing) {
+      removeExistingPanel();
+    }
+
+    // Navigated to a listing (opened modal or switched listing)
+    if (nowIsListing) {
+      removeExistingPanel();
+      initWithRetry();
+    }
+
+    lastWasListing = nowIsListing;
+  }, 300);
+
+  // --- Initial Run (only on listing pages) ---
+
+  if (isListingPage(window.location.href)) {
+    initWithRetry();
   }
 })();

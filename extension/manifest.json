@@ -10,7 +10,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["https://www.zillow.com/homedetails/*"],
+      "matches": ["https://www.zillow.com/*"],
       "js": [
         "lib/api-client.js",
         "content-scripts/panel.js",
