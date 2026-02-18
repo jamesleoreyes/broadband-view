@@ -105,27 +105,73 @@ function filterFixedBroadbandFiles(
   });
 }
 
+const MAX_RETRIES = 3;
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes per file
+
 /**
  * Download a single file by file_id from the FCC BDC.
+ * Retries up to MAX_RETRIES times with exponential backoff on failure.
  */
 async function downloadFile(
   fileId: number,
   outputPath: string,
 ): Promise<boolean> {
-  const headers = getFccHeaders();
-  const response = await fetch(
-    `${BDC_BASE_URL}/downloads/downloadFile/availability/${fileId}`,
-    { headers },
-  );
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const headers = getFccHeaders();
+      const controller = new AbortController();
+      const timeout = setTimeout(
+        () => controller.abort(),
+        DOWNLOAD_TIMEOUT_MS,
+      );
 
-  if (!response.ok || !response.body) {
-    console.error(`Failed to download file ${fileId}: ${response.status}`);
-    return false;
+      const response = await fetch(
+        `${BDC_BASE_URL}/downloads/downloadFile/availability/${fileId}`,
+        { headers, signal: controller.signal },
+      );
+
+      if (!response.ok || !response.body) {
+        clearTimeout(timeout);
+        console.error(
+          `  Attempt ${attempt}/${MAX_RETRIES}: HTTP ${response.status}`,
+        );
+        if (attempt < MAX_RETRIES) {
+          const delay = Math.pow(2, attempt) * 5000; // 10s, 20s, 40s
+          console.log(`  Retrying in ${delay / 1000}s...`);
+          await sleep(delay);
+          continue;
+        }
+        return false;
+      }
+
+      // Remove any partial file from a previous failed attempt
+      if (fs.existsSync(outputPath)) {
+        fs.unlinkSync(outputPath);
+      }
+
+      const fileStream = fs.createWriteStream(outputPath);
+      await pipeline(Readable.fromWeb(response.body as never), fileStream);
+      clearTimeout(timeout);
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `  Attempt ${attempt}/${MAX_RETRIES} failed: ${msg}`,
+      );
+
+      // Clean up partial download
+      if (fs.existsSync(outputPath)) {
+        fs.unlinkSync(outputPath);
+      }
+
+      if (attempt < MAX_RETRIES) {
+        const delay = Math.pow(2, attempt) * 5000;
+        console.log(`  Retrying in ${delay / 1000}s...`);
+        await sleep(delay);
+      }
+    }
   }
-
-  const fileStream = fs.createWriteStream(outputPath);
-  await pipeline(Readable.fromWeb(response.body as never), fileStream);
-  return true;
+  return false;
 }
 
 /**
@@ -164,11 +210,23 @@ export async function downloadStateData(
         `${file.file_name}.zip`,
       );
 
-      // Skip if already downloaded
+      // Skip if already downloaded and file looks valid
       if (fs.existsSync(outputPath)) {
-        console.log(`  Already exists: ${file.file_name}`);
-        downloadedFiles.push(outputPath);
-        continue;
+        const existingSize = fs.statSync(outputPath).size;
+        const expectedRecords = parseInt(file.record_count, 10) || 0;
+        // A valid zip with data should be at least 1KB, and files with many
+        // records should be proportionally larger (~10 bytes/record compressed
+        // is a very conservative floor)
+        const minExpectedSize = Math.max(1024, expectedRecords * 2);
+        if (existingSize >= minExpectedSize) {
+          console.log(`  Already exists: ${file.file_name}`);
+          downloadedFiles.push(outputPath);
+          continue;
+        }
+        console.log(
+          `  Existing file too small (${(existingSize / 1024).toFixed(1)} KB for ${expectedRecords} records), re-downloading...`,
+        );
+        fs.unlinkSync(outputPath);
       }
 
       console.log(`  Downloading ${file.file_name}...`);

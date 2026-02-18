@@ -5,8 +5,8 @@ import { downloadStateData } from "./download.js";
 import { importStateData } from "./import.js";
 import "dotenv/config";
 
-// MVP: Start with a small state for testing
-const MVP_STATES = ["44"]; // Rhode Island (smallest state by area)
+// States to import (FIPS codes)
+const MVP_STATES = ["37", "44", "45"]; // NC, RI, SC
 
 async function runPipeline() {
   console.log("=== BroadbandView Data Pipeline ===\n");
